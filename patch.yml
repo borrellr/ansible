@@ -1,0 +1,34 @@
+---
+- name: A simple patching playbook
+  hosts: all
+  become: true
+  check_mode: false
+  gather_facts: true
+  vars:
+    datetimestamp: "{{ '%Y-%m-%d-%H-%M-%S' | strftime(ansible_date_time.epoch) }}"
+    patch_log: "/var/tmp/patching-{{ datetimestamp }}.log"
+
+  tasks:
+  - name: Install patches
+    dnf:
+      name: '*'
+      state: latest
+      update_cache: yes
+    register:
+      test_change
+        
+  - name: Print output if any
+    ansible.builtin.debug:
+      var: test_change
+
+  - name: Executing report
+    when: test_change is changed
+    block:
+    - name: Generate patch report
+      ansible.builtin.template:
+        src: "/work/ansible/PatchReport.j2"
+        dest: "{{ patch_log }}"
+
+    - name: Reboot server if changed
+      command: systemctl reboot
+      when: test_change is changed

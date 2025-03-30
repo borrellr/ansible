@@ -1,0 +1,38 @@
+---
+- name: Add user to /etc/cron.allow
+  hosts: all
+  become: true
+  vars:
+    is_cron_allow: "{{ '/etc/cron.allow' is not ansible.builtin.exists }}"
+  
+  tasks:
+    - name: Check if cron.allow is present and create if necessary.
+      when: is_cron_allow
+      ansible.builtin.lineinfile:
+        path: /etc/cron.allow
+        mode: '0600'
+        owner: root
+        group: root
+        create: true
+        line: "root"
+ 
+    - name: Block to add valid entry into /etc/cron.allow
+      when: newuser is defined and newuser != ""
+      block:
+        - name: Get the list of users from the variable
+          ansible.builtin.set_fact:
+            user_list: "{{ newuser.split(',') }}"
+
+        - name: Get the password file
+          ansible.builtin.getent:
+            database: passwd
+          register: passwd_file
+
+        - name: Ensure the user is present in /etc/cron.allow
+          ansible.builtin.lineinfile:
+            path: /etc/cron.allow
+            line: "{{ item }}"
+            state: present
+          when: item in passwd_file.ansible_facts.getent_passwd
+          loop: "{{ user_list }}"
+...
