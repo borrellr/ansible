@@ -9,6 +9,12 @@
     primary_interfaces: ["default", "all"]
     all_interfaces: "{{ primary_interfaces + ansible_interfaces }}"
   tasks:
+    - name: Uncomment IPv6 entry in /etc/hosts
+      ansible.builtin.replace:
+        path: /etc/hosts
+        regexp: '^#(::.*)$'
+        replace: '\1'
+
     - name: Remove sysctl configuration file
       ansible.builtin.file:
         path: "{{ ipv6_path }}"

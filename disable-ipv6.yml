@@ -7,6 +7,12 @@
     search_string: "ipv6.conf"
     chk_kernel: "{{ lsinitrd_result.stdout_lines | regex_search(search_string) }}"
   tasks:
+    - name: Comment IPv6 entry in /etc/hosts
+      ansible.builtin.replace:
+        path: /etc/hosts
+        regexp: '^(::.+)'
+        replace: '#\1'
+
     - name: Create sysctl configuration file
       ansible.builtin.template:
         src: /work/ansible/disable-ipv6.j2
