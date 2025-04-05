@@ -1,0 +1,10 @@
+#################
+# This file is managed by Ansible. Do not edit manually.
+# Any changes will be overwritten.
+# Disable IPv6
+##################
+net.ipv6.conf.default.disable_ipv6 = 1
+net.ipv6.conf.all.disable_ipv6 = 1
+{% for item in ansible_interfaces %}
+net.ipv6.conf.{{ item }}.disable_ipv6 = 1
+{% endfor %}
