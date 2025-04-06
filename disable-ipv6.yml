@@ -7,6 +7,8 @@
     search_string: "ipv6.conf"
     chk_kernel: "{{ lsinitrd_result.stdout_lines | select('search', search_string) | list }}"
     chk_kernel2: "{{ lsinitrd_result2.stdout_lines | select('search', search_string) | list }}"
+    primary_interfaces: ["default", "all"]
+    all_interfaces: "{{ primary_interfaces + ansible_interfaces }}"
 
   tasks:
     - name: Comment IPv6 entry in /etc/hosts
@@ -22,6 +24,14 @@
         group: root
         mode: '0644'
 
+    - name: Disable IPv6 on all interfaces
+      ansible.posix.sysctl:
+        name: "net.ipv6.conf.{{ item }}.disable_ipv6"
+        value: 1
+        state: present
+        reload: yes
+      loop: "{{ all_interfaces }}"
+
     - name: Create sysctl configuration file
       ansible.builtin.template:
         src: "{{ playbook_dir }}/templates/disable-ipv6.j2"
@@ -29,12 +39,6 @@
         owner: root
         group: root
         mode: '0644'
-
-    - name: Run sysctl --system
-      ansible.builtin.command:
-        cmd: "sysctl --system"
-      failed_when: sysctl_result.rc != 0
-      register: sysctl_result
 
     - name: Run lsinitrd to test initramfs for IPv6
       ansible.builtin.command:
