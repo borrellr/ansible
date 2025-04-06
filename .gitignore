@@ -11,3 +11,6 @@ test-results.yml
 test.yml
 testenv.yml
 replace[12].yml
+*.txt
+chkuser.yml
+pkglist.yaml
