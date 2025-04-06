@@ -2,7 +2,6 @@
 - name: A simple patching playbook
   hosts: all
   become: true
-  check_mode: false
   gather_facts: true
   vars:
     datetimestamp: "{{ '%Y-%m-%d-%H-%M-%S' | strftime(ansible_date_time.epoch) }}"
@@ -13,7 +12,6 @@
     dnf:
       name: '*'
       state: latest
-      update_cache: yes
     register:
       test_change
         
@@ -26,9 +24,16 @@
     block:
     - name: Generate patch report
       ansible.builtin.template:
-        src: "/work/ansible/PatchReport.j2"
+        src: "templates/PatchReport.j2"
         dest: "{{ patch_log }}"
 
+    - name: Take a Pause
+      ansible.builtin.pause:
+        seconds: 5
+
     - name: Reboot server if changed
-      command: systemctl reboot
-      when: test_change is changed
+      ansible.builtin.reboot:
+        msg: "Rebooting after patching"
+        connect_timeout: 5
+        reboot_timeout: 600
+        test_command: whoami
