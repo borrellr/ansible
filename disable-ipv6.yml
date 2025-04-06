@@ -5,7 +5,9 @@
   vars:
     ipv6_path: /etc/sysctl.d/99-disable-ipv6.conf
     search_string: "ipv6.conf"
-    chk_kernel: "{{ lsinitrd_result.stdout_lines | regex_search(search_string) }}"
+    chk_kernel: "{{ lsinitrd_result.stdout_lines | select('search', search_string) | list }}"
+    chk_kernel2: "{{ lsinitrd_result2.stdout_lines | select('search', search_string) | list }}"
+
   tasks:
     - name: Comment IPv6 entry in /etc/hosts
       ansible.builtin.replace:
@@ -13,9 +15,16 @@
         regexp: '^(::.+)'
         replace: '#\1'
 
+    - name: Ensure /etc/hosts has correct permissions
+      ansible.builtin.file:
+        path: /etc/hosts
+        owner: root
+        group: root
+        mode: '0644'
+
     - name: Create sysctl configuration file
       ansible.builtin.template:
-        src: /work/ansible/disable-ipv6.j2
+        src: "{{ playbook_dir }}/templates/disable-ipv6.j2"
         dest: "{{ ipv6_path }}"
         owner: root
         group: root
@@ -24,25 +33,25 @@
     - name: Run sysctl --system
       ansible.builtin.command:
         cmd: "sysctl --system"
+      failed_when: sysctl_result.rc != 0
+      register: sysctl_result
 
     - name: Run lsinitrd to test initramfs for IPv6
       ansible.builtin.command:
         cmd: "lsinitrd -k {{ ansible_kernel }}"
       register: lsinitrd_result
 
-    - name: Check intramfs for IPv6 in block
-      when: chk_kernel is defined and chk_kernel == ""
-      vars:
-        chk_kernel2: "{{ lsinitrd_result2.stdout_lines | regex_search(search_string) }}"
+    - name: Check initramfs for IPv6 in block
+      when: chk_kernel is defined and chk_kernel | length == 0
       block:
-        - name: Rebuid initramfs
+        - name: Rebuild initramfs
           ansible.builtin.command:
             cmd: "dracut -f -v"
           register: dracut_result
 
         - name: Check dracut result
           ansible.builtin.debug:
-            msg: "Dracut result: {{ dracut_result.stdout }}"
+            msg: "Dracut completed successfully: {{ dracut_result.stdout }}"
           when: dracut_result is defined and dracut_result.rc == 0
 
         - name: Rerun lsinitrd to check initramfs
@@ -52,10 +61,6 @@
 
         - name: Check resulting initramfs
           ansible.builtin.debug:
-            msg: "Resulting initramfs has IPV6 disabled"
-          when: chk_kernel2 is defined and chk_kernel2 != ""
-
-    - name: End of playbook
-      ansible.builtin.debug:
-        msg: "Playbook completed"
+            msg: "Resulting initramfs has IPv6 disabled"
+          when: chk_kernel2 is defined and chk_kernel2 | length > 0
 ...
