@@ -23,7 +23,12 @@
       ansible.builtin.command:
         cmd: "lsof +D /var/lib/rpm"
       register: lsof_check
-      failed_when: /usr/bin/lsof is not executable
+      when: /usr/bin/lsof is not executable
+
+    - name: Set default for lsof_check
+      ansible.builtin.set_fact:
+        lsof_check: ""
+      when: lsof_check is not defined
 
     - name: Safely remove lock files
       ansible.builtin.file:
