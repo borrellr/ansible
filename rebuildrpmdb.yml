@@ -69,7 +69,8 @@
     - name: Rebuild RPM indexes
       ansible.builtin.command:
         cmd: rpm --rebuilddb -vv
-      when: rpm_db_check.rc != 0
+      register: rpm_rebuild
+      failed_when: rpm_rebuild.rc != 0
 
     - name: Check if the RPM database is corrupted again
       ansible.builtin.command:
