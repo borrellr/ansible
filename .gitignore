@@ -5,7 +5,6 @@ grub
 hosts.yml
 lookup.yml
 mount_tests.yml
-rebuildrpmdb.yml
 relative_path.yml
 test-results.yml
 test.yml
@@ -14,3 +13,4 @@ replace[12].yml
 *.txt
 chkuser.yml
 pkglist.yaml
+copy-test.yml
