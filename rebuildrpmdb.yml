@@ -27,7 +27,9 @@
 
     - name: Set default for lsof_check
       ansible.builtin.set_fact:
-        lsof_check: ""
+        lsof_check:
+          stdout: ""
+          rc: 0
       when: lsof_check is not defined
 
     - name: Safely remove lock files
