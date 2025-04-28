@@ -1,0 +1,166 @@
+---
+- name: Gather system information and create a report
+  hosts: all
+  gather_facts: yes
+  become: true
+  tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: Gather file system information
+      ansible.builtin.command:
+        cmd: df -hT
+      register: filesystem_info
+
+    - name: Gather kernel parameters
+      ansible.builtin.command:
+        cmd: sysctl -a
+      register: kernel_parameters
+
+    - name: Gather /etc/security/limits.d information
+      ansible.builtin.shell:
+        cmd: cat /etc/security/limits.d/*
+      register: limits_d_info
+      ignore_errors: yes
+
+    - name: Gather networking information
+      ansible.builtin.command:
+        cmd: ip a
+      register: networking_info
+
+    - name: Gather routing information
+      ansible.builtin.command:
+        cmd: ip route
+      register: routing_info
+
+    - name: Gather physical volumes (PVs) information
+      ansible.builtin.command:
+        cmd: pvs
+      register: pvs_info
+      ignore_errors: yes
+
+    - name: Gather volume groups (VGs) information
+      ansible.builtin.command:
+        cmd: vgs
+      register: vgs_info
+      ignore_errors: yes
+
+    - name: Gather logical volumes (LVs) information
+      ansible.builtin.command:
+        cmd: lvs
+      register: lvs_info
+      ignore_errors: yes
+
+    - name: Gather timezone information
+      ansible.builtin.shell:
+        cmd: timedatectl | grep "Time zone"
+      register: timezone_info
+
+    - name: Gather current repository list information
+      ansible.builtin.command:
+        cmd: yum repolist
+      register: repolist_info
+      ignore_errors: yes
+
+    - name: Gather postfix main.cf configuration
+      ansible.builtin.shell:
+        cmd: cat /etc/postfix/main.cf
+      register: postfix_main_cf
+      when: "'/etc/postfix/main.cf' is exists"
+      ignore_errors: yes
+
+    - name: Gather idmapd.conf configuration
+      ansible.builtin.shell:
+        cmd: cat /etc/idmapd.conf
+      register: idmapd_conf
+      ignore_errors: yes
+
+    - name: Gather cron.allow information
+      ansible.builtin.shell:
+        cmd: cat /etc/cron.allow
+      register: cron_allow
+      when: "'/etc/cron.allow' is exists"
+      ignore_errors: yes
+
+    - name: Create system information report
+      ansible.builtin.copy:
+        dest: /tmp/system_info_report.txt
+        content: |
+          System Information Report
+          =========================
+          Hostname: {{ ansible_hostname }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Kernel: {{ ansible_kernel }}
+          Architecture: {{ ansible_architecture }}
+
+          File System Information:
+          -------------------------
+          {{ filesystem_info.stdout }}
+
+          Kernel Parameters:
+          ------------------
+          {{ kernel_parameters.stdout }}
+
+          /etc/security/limits.d Information:
+          ------------------------------------
+          {{ limits_d_info.stdout }}
+
+          Networking Information:
+          ------------------------
+          {{ networking_info.stdout }}
+
+          Routing Information:
+          ---------------------
+          {{ routing_info.stdout }}
+
+          Physical Volumes (PVs) Information:
+          ------------------------------------
+          {{ pvs_info.stdout }}
+
+          Volume Groups (VGs) Information:
+          ---------------------------------
+          {{ vgs_info.stdout }}
+
+          Logical Volumes (LVs) Information:
+          ----------------------------------
+          {{ lvs_info.stdout }}
+
+          Timezone Information:
+          ----------------------
+          {{ timezone_info.stdout }}
+
+          Current Repository List:
+          -------------------------
+          {{ repolist_info.stdout }}
+
+          Postfix main.cf Configuration:
+          ------------------------------
+          {{ postfix_main_cf.stdout | default("No postfix configuration found") }}
+
+          idmapd.conf Configuration:
+          ---------------------------
+          {{ idmapd_conf.stdout }}
+
+          cron.allow Information:
+          ------------------------
+          {{ cron_allow.stdout | default("No cron.allow configuration found") }}
+
+          Listing of /opt directory:
+          -------------------------
+          {% for path in query('ansible.builtin.fileglob','/opt/*') %}
+          - {{ path }}
+          {% endfor %}
+
+          Listing of /work/ansible directory:
+          --------------------------------
+          {% for path in query('ansible.builtin.fileglob','/work/ansible/*') %}
+          - {{ path }}
+          {% endfor %}
+
+          Installed Packages:
+          -------------------
+          {% for pkg, details in ansible_facts.packages.items() %}
+          - {{ pkg }}: {{ details[0].version }}
+          {% endfor %}
+...

@@ -1,0 +1,28 @@
+---
+- name: Check if ports are listening on RHEL server
+  hosts: all
+  become: yes
+  vars:
+    ports: "{{ ports_csv.split(',') }}"
+  tasks:
+    - name: Check if each port is listening
+      ansible.builtin.shell: "ss -tuln | grep ':{{ item }} '"
+      register: port_check
+      failed_when: port_check.rc not in [0, 1]
+      changed_when: false
+      loop: "{{ ports }}"
+      loop_control:
+        label: "{{ item }}"
+
+    - name: Display port statuses
+      ansible.builtin.debug:
+        msg: >
+          Port {{ item.item }} is
+          {% if item.rc == 0 %}
+          listening
+          {% else %}
+          not listening
+          {% endif %}
+      loop: "{{ port_check.results }}"
+      loop_control:
+        label: "{{ item }}"
