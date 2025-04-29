@@ -5,7 +5,9 @@
   become: yes
   gather_facts: yes
   vars:
-    bkupdate: "{{ ansible_date_time.epoch | to_datetime('%Y-%m-%d_H%-%M-%S') }}"
+    bkupdate: "{{ '%Y-%m-%d_H%-%M-%S' | strftime(ansible_date_time.epoch) }}"
+    lsofchk: "{{ '/usr/bin/lsof' is exists }}"
+    packageschk: "{{ '/var/lib/rpm/Packages' is exists }}"
   tasks:
     - name: Backup RPM files
       ansible.builtin.command:
@@ -23,7 +25,8 @@
       ansible.builtin.command:
         cmd: "lsof +D /var/lib/rpm"
       register: lsof_check
-      when: /usr/bin/lsof is not executable
+      failed_when: lsof_check.stdout != ""
+      when: lsofchk
 
     - name: Set default for lsof_check
       ansible.builtin.set_fact:
@@ -43,22 +46,25 @@
         - /var/lib/rpm/.rpm.lock.2
       when: lsof_check.stdout == "" and rpm_check.stdout == ""
 
-    - name: Run rpmdb verify command
-      ansible.builtin.command:
-        chdir: /var/lib/rpm
-        cmd: /var/lib/rpm/rpmdb_verify Packages
-      register: rpm_verify
+    - name: Check if the Packages file exists
+      when: packageschk
+      block:
+        - name: Run rpmdb verify command
+          ansible.builtin.command:
+            chdir: /var/lib/rpm
+            cmd: /usr/lib/rpm/rpmdb_verify Packages
+          register: rpm_verify
     
-    - name: Rename the packages directory
-      ansible.builtin.shell:
-        chdir: /var/lib/rpm
-        cmd: |
-          mv /var/lib/rpm/Packages /var/lib/rpm/Packages.orig
-          /usr/lib/rpm/rpmdb_dump Packages.orig | /usr/lib/rpm/rpmdb_load Packages
-          /usr/lib/rpm/rpmdb_verify Packages
-      register: rpm_rename
-      failed_when: rpm_rename.rc != 0
-      when: rpm_verify.rc != 0
+        - name: Rename the packages directory
+          ansible.builtin.shell:
+            chdir: /var/lib/rpm
+            cmd: |
+              mv Packages Packages.orig
+              /usr/lib/rpm/rpmdb_dump Packages.orig | /usr/lib/rpm/rpmdb_load Packages
+              /usr/lib/rpm/rpmdb_verify Packages
+          register: rpm_rename
+          failed_when: rpm_rename.rc != 0
+          when: rpm_verify.rc != 0
 
     - name: Check if the RPM database is corrupted
       ansible.builtin.command:
@@ -77,5 +83,6 @@
         chdir: /var/lib/rpm
         cmd: /usr/lib/rpm/rpmdb_verify Packages
       register: rpm_db_check_final
-      failed_when: rpm_db_check_final.rc != 0    
+      failed_when: rpm_db_check_final.rc != 0
+      when: packageschk
 ...
