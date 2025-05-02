@@ -1,0 +1,37 @@
+---
+- name: Check for sos package and store version
+  hosts: all
+  vars:
+    target_version: "4.8.2"
+  tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: Set sos package version to a variable
+      set_fact:
+        sos_version: "{{ ansible_facts.packages['sos'][0].version }}"
+      when: "'sos' in ansible_facts.packages"
+
+    - name: "Check if sos_version is greater than {{ target_version }}"
+      set_fact:
+        is_sos_version_greater: "{{ sos_version is version(target_version, '>=') }}"
+      when: sos_version is defined
+
+    - name: Debug the version comparison result (optional)
+      debug:
+        msg: "Is sos_version greater than {{ target_version }}? {{ is_sos_version_greater }}"
+      when: sos_version is defined
+
+    - name: Check if AuthorizedKeysFile is set in sshd_config
+      ansible.builtin.command: grep -E '^AuthorizedKeysFile' /etc/ssh/sshd_config
+      register: authorized_keys_check
+      failed_when: authorized_keys_check.rc != 0 and authorized_keys_check.rc != 1
+
+    - name: Set fact for AuthorizedKeysFile presence
+      ansible.builtin.set_fact:
+        authorized_keys_present: "{{ authorized_keys_check.stdout is not none and authorized_keys_check.stdout != '' }}"
+
+    - name: Debug the AuthorizedKeysFile check result (optional)
+      ansible.builtin.debug:
+        msg: "Is AuthorizedKeysFile set in sshd_config? {{ authorized_keys_present }}"
