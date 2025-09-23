@@ -1,0 +1,26 @@
+---
+- name: Test chkport role task - open port
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: Run chkport for a port likely open (SSH)
+      include_role:
+        name: utils
+        tasks_from: chkport
+      vars:
+        port: 22
+        timeout: 3
+
+- name: Test chkport role task - closed port
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: Run chkport for a port likely closed
+      include_role:
+        name: utils
+        tasks_from: chkport
+      vars:
+        port: 65535
+        timeout: 2

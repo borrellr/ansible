@@ -1,0 +1,27 @@
+---
+# Role task: check if a port is open on the target host
+# This file should be included as `tasks/main.yml` or similar in a role.
+- name: Check if port {{ port }} is open on {{ inventory_hostname }}
+  wait_for:
+    host: "{{ inventory_hostname }}"
+    port: "{{ port }}"
+    timeout: "{{ timeout }}"
+    state: started
+  register: port_check
+  ignore_errors: yes
+
+- name: Set result variables based on port check
+  vars:
+    elapsed: "{{ port_check.elapsed | default(timeout + 1) }}"
+  set_fact:
+    RC: "{{ port_check.rc | default(1) }}"
+    OUTPUT: "{{ ['Port ' + port|string + ' is open on ' + inventory_hostname] if elapsed|int < timeout else [] }}"
+    ERROR: "{{ ['Port ' + port|string + ' is closed on ' + inventory_hostname] if elapsed|int >= timeout else [] }}"
+
+- name: Display results
+  debug:
+    msg:
+      rc: "{{ RC }}"
+      output: "{{ OUTPUT }}"
+      error: "{{ ERROR }}"
+...

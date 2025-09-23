@@ -1,0 +1,5 @@
+---
+# Default variables for utils role
+# These can be overridden when including the role or in play vars
+port: 22
+timeout: 5
