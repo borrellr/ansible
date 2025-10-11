@@ -1,0 +1,9 @@
+---
+- name: Check port availablity
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Import role
+      ansible.builtin.import_role:
+        name: utils
+        tasks_from: chkport

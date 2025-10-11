@@ -9,8 +9,8 @@
         name: utils
         tasks_from: chkport
       vars:
-        port: 22
-        timeout: 3
+        portchk: 22
+        task_timeout: 3
 
 - name: Test chkport role task - closed port
   hosts: localhost
@@ -22,5 +22,5 @@
         name: utils
         tasks_from: chkport
       vars:
-        port: 65535
-        timeout: 2
+        portchk: 65535
+        task_timeout: 2

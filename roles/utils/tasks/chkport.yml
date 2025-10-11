@@ -1,27 +1,37 @@
 ---
 # Role task: check if a port is open on the target host
 # This file should be included as `tasks/main.yml` or similar in a role.
-- name: Check if port {{ port }} is open on {{ inventory_hostname }}
-  wait_for:
-    host: "{{ inventory_hostname }}"
-    port: "{{ port }}"
-    timeout: "{{ timeout }}"
-    state: started
-  register: port_check
-  ignore_errors: yes
-
-- name: Set result variables based on port check
+- name: Block of Port check
+  when: not ansible_check_mode
   vars:
-    elapsed: "{{ port_check.elapsed | default(timeout + 1) }}"
-  set_fact:
-    RC: "{{ port_check.rc | default(1) }}"
-    OUTPUT: "{{ ['Port ' + port|string + ' is open on ' + inventory_hostname] if elapsed|int < timeout else [] }}"
-    ERROR: "{{ ['Port ' + port|string + ' is closed on ' + inventory_hostname] if elapsed|int >= timeout else [] }}"
+    execution_string: "Checking port {{ portchk }} on {{ inventory_hostname }} with timeout {{ task_timeout }} seconds."
+  block:
+    - name: Check if port {{ portchk }} is open on {{ inventory_hostname }}
+      wait_for:
+        host: "{{ inventory_hostname }}"
+        port: "{{ portchk | int }}"
+        timeout: "{{ task_timeout | int }}"
+        state: started
+      register: port_check
 
-- name: Display results
-  debug:
-    msg:
-      rc: "{{ RC }}"
-      output: "{{ OUTPUT }}"
-      error: "{{ ERROR }}"
+    - name: Set result variables based on port check
+      ansible.builtin.set_fact:
+        results:
+          RC: 1
+          EXECUTION: "{{ execution_string }}"
+          OUTPUT: []
+          ERROR: "Port {{ portchk }} is not available on {{ inventory_hostname }}."
+  rescue:
+    - name: Set result variables based on failed port check
+      ansible.builtin.set_fact:
+        results:
+          RC: 0
+          EXECUTION: "{{ execution_string }}"
+          OUTPUT: ["Port {{ portchk }} is available on {{ inventory_hostname }} or check timed out."]
+          ERROR: []
+
+- name: Debug port check results
+  ansible.builtin.include_role:
+    name: utils
+    tasks_from: display_results.yml
 ...

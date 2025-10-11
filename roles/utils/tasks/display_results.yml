@@ -1,0 +1,10 @@
+---
+- name: Display Results from execution
+  when: not ansible_check_mode
+  ansible.builtin.debug:
+    msg:
+      rc: "{{ results.RC | default('N/A') }}"
+      execution_output: "{{ results.EXECUTION | default('No execution output') }}"
+      output: "{{ results.OUTPUT | default('No output') }}"
+      error: "{{ results.ERROR | default('No error') }}"
+...
